@@ -2,9 +2,11 @@
 using System;
 using System.Configuration;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Automation;
+using System.Windows.Forms;
 
 namespace StartWow
 {
@@ -12,20 +14,47 @@ namespace StartWow
     {
         private static string _pathToWowExe;
         private const string keyBase = @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall";
+        private static int _x;
+        private static int _y;
 
         [DllImport("user32.dll")]
         public static extern void SwitchToThisWindow(IntPtr hWnd, bool turnon);
+        
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
 
         static void Main(string[] args)
         {
             _pathToWowExe = !string.IsNullOrEmpty(ConfigurationManager.AppSettings["pathToWowExe"]) ?
                 ConfigurationManager.AppSettings["pathToWowExe"] : GetPathForExe();
 
-            WaitForTimeToPass(
-                TimeSpan.TryParse(ConfigurationManager.AppSettings["waitUntillRun"], out TimeSpan time) ? 
-                time : TimeSpan.Zero);
+            _x = Int32.Parse(ConfigurationManager.AppSettings["x"]);
+            _y = Int32.Parse(ConfigurationManager.AppSettings["y"]);
+
+            while (true)
+            {
+                StartWow_Updated();
+                Thread.Sleep(TimeSpan.FromMinutes(5));
+                Process.GetProcessesByName("WowClassic.exe").FirstOrDefault().Kill();
+            }
+
+
+            //StartWow();
+            //WaitForTimeToPass(
+            //    TimeSpan.TryParse(ConfigurationManager.AppSettings["waitUntillRun"], out TimeSpan time) ?
+            //    time : TimeSpan.Zero);
         }
 
+
+        private static void TypeString(string str)
+        {
+            foreach (var chr in str)
+            {
+                Thread.Sleep(200);
+                SendKeys.SendWait(chr.ToString());
+            }
+        }
 
         private static void StartWow()
         {
@@ -40,7 +69,6 @@ namespace StartWow
                 i++;
                 Thread.Sleep(100);
             }
-
             if (battleNetMainWindow == null)
             {
                 throw new InvalidOperationException("Battle.net isn't running");
@@ -51,12 +79,29 @@ namespace StartWow
             CachePropertiesWithScope(battleNetMainWindow);
         }
 
+        private static void StartWow_Updated()
+        {
+            SwitchToBattleNetWindow();
+            Thread.Sleep(5000);
+            MouseOperations.SetCursorPosition(_x, _y);
+            MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftDown);
+            MouseOperations.MouseEvent(MouseOperations.MouseEventFlags.LeftUp);
+            Thread.Sleep(15000);
+            var proc = Process.GetProcesses().Where(x => x.ProcessName.ToLower().Contains("wowclassic")).First();
+            ShowWindow(proc.MainWindowHandle, 2);
+            SwitchToBattleNetWindow();
+
+        }
+
         private static void SwitchToBattleNetWindow()
         {
             Process[] processes = Process.GetProcessesByName("Battle.net");
             foreach (var proc in processes)
             {
                 SwitchToThisWindow(proc.MainWindowHandle, true);
+                ShowWindow(proc.MainWindowHandle, 1);
+                ShowWindow(proc.MainWindowHandle, 3);
+
             }
         }
 
@@ -90,8 +135,6 @@ namespace StartWow
 
             StartWow();
         }
-
-
 
         private static void CachePropertiesWithScope(AutomationElement elementMain)
         {
