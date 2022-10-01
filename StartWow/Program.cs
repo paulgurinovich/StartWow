@@ -36,7 +36,8 @@ namespace StartWow
             {
                 StartWow_Updated();
                 Thread.Sleep(TimeSpan.FromMinutes(5));
-                Process.GetProcessesByName("WowClassic.exe").FirstOrDefault().Kill();
+                var proc = Process.GetProcesses().Where(x => x.ProcessName.ToLower().Contains("wowclassic")).First();
+                proc.Kill();
             }
 
 
