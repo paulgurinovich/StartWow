@@ -2,6 +2,7 @@
 using System;
 using System.Configuration;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -32,14 +33,38 @@ namespace StartWow
             _x = Int32.Parse(ConfigurationManager.AppSettings["x"]);
             _y = Int32.Parse(ConfigurationManager.AppSettings["y"]);
 
-            while (true)
-            {
-                StartWow_Updated();
-                Thread.Sleep(TimeSpan.FromMinutes(5));
-                var proc = Process.GetProcesses().Where(x => x.ProcessName.ToLower().Contains("wowclassic")).First();
-                proc.Kill();
-            }
+            DateTime now = DateTime.Now;
 
+            using(StreamWriter sw = new StreamWriter("log.txt"))
+            {
+                sw.WriteLine(String.Format("[{0}]   STARTED", now.ToLongTimeString()));
+                int i = 0;
+                while (true)
+                {
+                    sw.WriteLine(String.Format("[{0}]   ITERATION #{1}", now.ToLongTimeString(), i));
+
+                    try
+                    {
+                        StartWow_Updated();
+                        Thread.Sleep(TimeSpan.FromMinutes(5));
+                        var proc = Process.GetProcesses().Where(x => x.ProcessName.ToLower().Contains("wowclassic"));
+
+                        foreach (var p in proc)
+                        {
+                            p.Kill();
+                        }
+                    }
+                    catch (Exception e)
+                    {
+                        sw.WriteLine(String.Format("[{0}]   ERROR! /n{1}", now.ToLongTimeString(), e.Message));
+                        sw.WriteLine(String.Format("[{0}]   STACKTRACE:", now.ToLongTimeString(), e.StackTrace));
+
+                    }
+                    sw.WriteLine(String.Format("[{0}]   END OF ITERATION", now.ToLongTimeString(), i));
+
+                }
+
+            }
 
             //StartWow();
             //WaitForTimeToPass(
